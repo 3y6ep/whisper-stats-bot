@@ -2,15 +2,11 @@
   "name": "whisper-stats-bot",
   "version": "1.0.0",
   "description": "Telegram bot for Whisper Behind the Wall game statistics",
-  "type": "module",
   "scripts": {
     "build": "echo 'No build needed'"
   },
   "dependencies": {
     "node-fetch": "^3.3.2",
     "googleapis": "^126.0.1"
-  },
-  "engines": {
-    "node": ">=18"
   }
 }
