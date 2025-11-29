@@ -8,6 +8,11 @@
   ],
   "routes": [
     {
+      "src": "/api/bot",
+      "dest": "/api/bot.js",
+      "methods": ["GET", "POST", "OPTIONS"]
+    },
+    {
       "src": "/webhook",
       "dest": "/api/bot.js",
       "methods": ["GET", "POST", "OPTIONS"]
