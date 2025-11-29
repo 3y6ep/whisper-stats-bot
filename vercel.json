@@ -10,7 +10,7 @@
     {
       "src": "/webhook",
       "dest": "/api/bot.js",
-      "methods": ["POST"]
+      "methods": ["GET", "POST", "OPTIONS"]
     }
   ]
 }
