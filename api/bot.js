@@ -1,35 +1,46 @@
-import fetch from 'node-fetch';
-import { google } from 'googleapis';
+const fetch = require('node-fetch');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const SHEET_ID = process.env.SHEET_ID;
 
-// Обработчик вебхука для Netlify
-export async function handler(event) {
-  console.log('=== WEBHOOK CALLED ===');
-  
-  // Мгновенный ответ для Telegram
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify({ ok: true })
-  };
+module.exports = async (req, res) => {
+  // Разрешаем CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  try {
-    if (event.body) {
-      const update = JSON.parse(event.body);
-      console.log('Update received:', JSON.stringify(update));
-      
-      // Асинхронная обработка
-      handleUpdate(update).catch(error => {
-        console.error('Error in async handling:', error);
-      });
-    }
-  } catch (error) {
-    console.error('Error parsing update:', error);
+  // Обрабатываем OPTIONS запрос для CORS
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
-  return response;
-}
+  // Только POST запросы
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    console.log('=== WEBHOOK CALLED ===');
+    
+    const update = req.body;
+    console.log('Update received:', JSON.stringify(update));
+
+    // Мгновенный ответ для Telegram
+    res.status(200).json({ ok: true });
+
+    // Асинхронная обработка
+    handleUpdate(update).catch(error => {
+      console.error('Error in async handling:', error);
+    });
+
+  } catch (error) {
+    console.error('Error in webhook:', error);
+    // Всегда возвращаем успех для Telegram
+    res.status(200).json({ ok: true });
+  }
+};
 
 // Основная обработка обновлений
 async function handleUpdate(update) {
@@ -59,7 +70,7 @@ async function handleMessage(message) {
     } else if (text === '/game' || text === '/start_game') {
       await startNewGame(chatId);
     } else if (text === '/ping') {
-      await sendMessage(chatId, '🏓 Pong! Бот работает на Netlify!');
+      await sendMessage(chatId, '🏓 Pong! Бот работает на Vercel!');
     } else if (text === '/stats') {
       await sendMessage(chatId, '📊 Статистика будет доступна после записи первых игр');
     } else {
@@ -67,7 +78,6 @@ async function handleMessage(message) {
     }
   } catch (error) {
     console.error('Error handling message:', error);
-    await sendMessage(chatId, '❌ Произошла ошибка при обработке команды');
   }
 }
 
@@ -103,82 +113,11 @@ async function handleCallback(callback) {
 
     if (data.startsWith('players_')) {
       const playersCount = data.split('_')[1];
-      await handlePlayersCount(chatId, playersCount);
-    } else if (data.startsWith('map_')) {
-      const parts = data.split('_');
-      const map = parts[1];
-      const playersCount = parts[2];
-      await handleMapSelection(chatId, map, playersCount);
-    } else if (data.startsWith('killer_')) {
-      const parts = data.split('_');
-      const killer = parts[1];
-      const map = parts[2];
-      const playersCount = parts[3];
-      await handleKillerSelection(chatId, killer, map, playersCount);
+      await sendMessage(chatId, `✅ Игроков: ${playersCount}\n\nПродолжаем запись игры...`);
     }
   } catch (error) {
     console.error('Error handling callback:', error);
   }
-}
-
-// Обработка выбора количества игроков
-async function handlePlayersCount(chatId, playersCount) {
-  await sendMessage(chatId, `✅ Игроков: ${playersCount}\n\nВыберите карту:`, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: '🏠 Особняк', callback_data: `map_Особняк_${playersCount}` }],
-        [{ text: '🏚️ Охотничий домик', callback_data: `map_Охотничий домик_${playersCount}` }],
-        [{ text: '🔬 Лаборатория', callback_data: `map_Лаборатория_${playersCount}` }],
-        [{ text: '🏰 Замок', callback_data: `map_Замок_${playersCount}` }],
-        [{ text: '⚰️ Гробница', callback_data: `map_Гробница_${playersCount}` }]
-      ]
-    }
-  });
-}
-
-// Обработка выбора карты
-async function handleMapSelection(chatId, map, playersCount) {
-  await sendMessage(chatId, `✅ Карта: ${map}\n\nВыберите убийцу:`, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: '🔪 Мясник', callback_data: `killer_Мясник_${map}_${playersCount}` }],
-        [{ text: '👻 Призрак', callback_data: `killer_Призрак_${map}_${playersCount}` }],
-        [{ text: '🔪 Маньяк', callback_data: `killer_Маньяк_${map}_${playersCount}` }],
-        [{ text: '🗿 Каменные войны', callback_data: `killer_Каменные войны_${map}_${playersCount}` }],
-        [{ text: '🐺 Оборотень', callback_data: `killer_Оборотень_${map}_${playersCount}` }],
-        [{ text: '🏹 Охотница', callback_data: `killer_Охотница_${map}_${playersCount}` }],
-        [{ text: '👹 Пожиратель', callback_data: `killer_Пожиратель_${map}_${playersCount}` }],
-        [{ text: '❓ Неопознанное', callback_data: `killer_Неопознанное_${map}_${playersCount}` }],
-        [{ text: '👑 Королева', callback_data: `killer_Королева_${map}_${playersCount}` }]
-      ]
-    }
-  });
-}
-
-// Обработка выбора убийцы
-async function handleKillerSelection(chatId, killer, map, playersCount) {
-  await sendMessage(chatId, 
-    `🎯 Игра записана!\n\n` +
-    `👥 Игроков: ${playersCount}\n` +
-    `🗺️ Карта: ${map}\n` +
-    `🔪 Убийца: ${killer}\n\n` +
-    `Данные сохранены в Google Sheets!\n\n` +
-    `Используйте /game для записи следующей игры`
-  );
-
-  // Здесь будет сохранение в Google Sheets
-  await saveGameToSheets({
-    playersCount,
-    map,
-    killer,
-    timestamp: new Date().toISOString()
-  });
-}
-
-// Сохранение игры в Google Sheets (заглушка)
-async function saveGameToSheets(gameData) {
-  console.log('Saving game to sheets:', gameData);
-  // Реализация сохранения в Google Sheets будет добавлена позже
 }
 
 // Отправка сообщения в Telegram
